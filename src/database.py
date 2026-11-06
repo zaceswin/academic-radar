@@ -1,24 +1,39 @@
 # src/database.py
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, Boolean, DateTime
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+import os
 from datetime import datetime, timezone
 
+from sqlalchemy import (
+    Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, create_engine,
+)
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Offline-first SQLite database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./academic_radar.sqlite"
+# A local SQLite file: no database server and no network needed.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./academic_radar.db")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+
 class Student(Base):
     __tablename__ = "students"
+
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    enrollment_date = Column(Date, default=datetime.date.today)
-    
-    # Relationship to scores
-    scores = relationship("Score", back_populates="student")
+    name = Column(String(100), nullable=False)
+
+
+class Score(Base):
+    __tablename__ = "scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
+    subject = Column(String(100), nullable=False)
+    marks_obtained = Column(Float, nullable=True)
+    total_marks = Column(Float, nullable=False)
+    assessment_date = Column(Date, nullable=False)
+    status = Column(String(20), nullable=False, default="present")
+
 
 class Teacher(Base):
     __tablename__ = "teachers"
@@ -30,18 +45,3 @@ class Teacher(Base):
     created_at = Column(
         DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )
-
-class Score(Base):
-    __tablename__ = "scores"
-    id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("students.id"))
-    subject = Column(String, index=True)
-    marks_obtained = Column(Float)
-    total_marks = Column(Float)
-    assessment_date = Column(Date, default=datetime.date.today)
-    status = Column(String, default="present") # Edge case: "excused" or "absent"
-
-    student = relationship("Student", back_populates="scores")
-
-# Create tables
-Base.metadata.create_all(bind=engine)
