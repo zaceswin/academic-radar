@@ -15,7 +15,21 @@ from sqlalchemy.orm import Session
 
 # Import our storage layer
 import database
+from contextlib import asynccontextmanager
 
+from fastapi import Depends, HTTPException, Query, status   # FastAPI removed from this line
+from fastapi_offline import FastAPIOffline
+# ... the rest of your imports unchanged ...
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # Create tables on startup (not at import time, so tests never touch the real DB file).
+    database.Base.metadata.create_all(bind=database.engine)
+    yield
+
+
+app = FastAPIOffline(title="Academic Radar Ingestion API", lifespan=lifespan)
 logger = logging.getLogger("academic_radar")
 
 app = FastAPI(title="Academic Radar Ingestion API")
