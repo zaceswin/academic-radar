@@ -1,7 +1,8 @@
 # src/database.py
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-import datetime
+from datetime import datetime, timezone
+
 
 # Offline-first SQLite database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./academic_radar.sqlite"
@@ -18,6 +19,17 @@ class Student(Base):
     
     # Relationship to scores
     scores = relationship("Score", back_populates="student")
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
 class Score(Base):
     __tablename__ = "scores"
